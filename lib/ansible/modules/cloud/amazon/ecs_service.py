@@ -420,7 +420,10 @@ class EcsServiceManager:
                        desired_count, client_token, role, deployment_configuration,
                        placement_constraints, placement_strategy, health_check_grace_period_seconds,
                        network_configuration, service_registries, launch_type, scheduling_strategy):
+<<<<<<< 72ab09ae3c96c57d3afc2972485df6b90c7998db
 
+=======
+>>>>>>> WIP commit so I don't have to stash
         params = dict(
             cluster=cluster_name,
             serviceName=service_name,
@@ -438,11 +441,14 @@ class EcsServiceManager:
             params['launchType'] = launch_type
         if self.health_check_setable(params) and health_check_grace_period_seconds is not None:
             params['healthCheckGracePeriodSeconds'] = health_check_grace_period_seconds
+<<<<<<< 72ab09ae3c96c57d3afc2972485df6b90c7998db
         if service_registries:
             params['serviceRegistries'] = service_registries
         # desired count is not required if scheduling strategy is daemon
         if desired_count is not None:
             params['desiredCount'] = desired_count
+=======
+>>>>>>> WIP commit so I don't have to stash
 
         if scheduling_strategy:
             params['schedulingStrategy'] = scheduling_strategy
@@ -520,7 +526,11 @@ def main():
         deployment_configuration=dict(required=False, default={}, type='dict'),
         placement_constraints=dict(required=False, default=[], type='list'),
         placement_strategy=dict(required=False, default=[], type='list'),
+<<<<<<< 72ab09ae3c96c57d3afc2972485df6b90c7998db
         health_check_grace_period_seconds=dict(required=False, type='int'),
+=======
+        health_check_grace_period_seconds=dict(required=False, type='int')
+>>>>>>> WIP commit so I don't have to stash
         network_configuration=dict(required=False, type='dict', options=dict(
             subnets=dict(type='list'),
             security_groups=dict(type='list'),
@@ -537,8 +547,13 @@ def main():
                                            ('launch_type', 'FARGATE', ['network_configuration'])],
                               required_together=[['load_balancers', 'role']])
 
+<<<<<<< 72ab09ae3c96c57d3afc2972485df6b90c7998db
     if module.params['state'] == 'present' and module.params['scheduling_strategy'] == 'REPLICA':
         if module.params['desired_count'] is None:
+=======
+    if module.params['state'] == 'present' and module.params['scheduling_strategy']== 'REPLICA':
+        if not module.params['desired_count']:
+>>>>>>> WIP commit so I don't have to stash
             module.fail_json(msg='state is present, scheduling_strategy is REPLICA; missing desired_count')
 
     service_mgr = EcsServiceManager(module)
@@ -553,7 +568,11 @@ def main():
                                                 DEPLOYMENT_CONFIGURATION_TYPE_MAP)
 
     deploymentConfiguration = snake_dict_to_camel_dict(deployment_configuration)
+<<<<<<< 72ab09ae3c96c57d3afc2972485df6b90c7998db
     serviceRegistries = list(map(snake_dict_to_camel_dict, module.params['service_registries']))
+=======
+    serviceRegistries = list(map(lambda registry: snake_dict_to_camel_dict(registry), module.params['service_registries']))
+>>>>>>> WIP commit so I don't have to stash
 
     try:
         existing = service_mgr.describe_service(module.params['cluster'], module.params['name'])
@@ -568,9 +587,15 @@ def main():
     if module.params['force_new_deployment']:
         if not module.botocore_at_least('1.8.4'):
             module.fail_json(msg='botocore needs to be version 1.8.4 or higher to use force_new_deployment')
+<<<<<<< 72ab09ae3c96c57d3afc2972485df6b90c7998db
     if module.params['health_check_grace_period_seconds']:
         if not module.botocore_at_least('1.8.20'):
             module.fail_json(msg='botocore needs to be version 1.8.20 or higher to use health_check_grace_period_seconds')
+=======
+    if module.params['healthcheck_grace_period']:
+        if not module.botocore_at_least('1.8.20'):
+            module.fail_json(msg='botocore needs to be version 1.8.20 or higher to use healthcheck_grace_period')
+>>>>>>> WIP commit so I don't have to stash
 
     if module.params['state'] == 'present':
 
@@ -603,7 +628,8 @@ def main():
                         loadBalancer['containerPort'] = int(loadBalancer['containerPort'])
 
                 if update:
-                    # check various parameters and boto versions and give a helpful erro in boto is not new enough for feature
+                    # If boto is not up to snuff, getting params will fail;
+                    # Move checks to where they matter vs generall at module level
 
                     if module.params['scheduling_strategy']:
                         if not module.botocore_at_least('1.10.37'):
@@ -644,6 +670,8 @@ def main():
                                                               module.params['placement_strategy'],
                                                               module.params['health_check_grace_period_seconds'],
                                                               network_configuration,
+                                                              serviceRegistries,
+                                                              module.params['launch_type'],
                                                               serviceRegistries,
                                                               module.params['launch_type'],
                                                               module.params['scheduling_strategy']
