@@ -31,6 +31,8 @@
             <<: *aws_connection_info
           register: ecs_taskdefinition_creation
 
+        - name: wtaf
+          debug: var=ecs_taskdefinition_creation
         - name: create ecs_service
           ecs_service:
             name: "{{ resource_prefix }}"

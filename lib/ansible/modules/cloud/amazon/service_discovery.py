@@ -32,6 +32,8 @@ description:
     There may be other things that use registries
     This module tries to allow creating service discovery registries
 notes:
+    Because lack of domain name in aws, lack of personal need, and general laziness; I have not tested any public parts.
+      - @ezmac
     
 version_added: "2.8"
 author:
@@ -51,15 +53,15 @@ options:
     creator_request_id:
         description:
           - A unique string that identifies the request and that allows failed CreateService requests to be retried without the risk of executing the operation twice. CreatorRequestId can be any unique string, for example, a date/time stamp.
-This field is autopopulated if not provided.
+            This field is autopopulated if not provided.
         required: false
     description:
         description: Description for the service.
     dns_config: 
         required: True
         description:
-           Required even when deleting to get the namespace_id; At minimum, dns_config may have only the namespace_id when deleting
-           for any creation, a full dns_config is required
+           Required even when deleting to get the namespace_id; At minimum, dns_config should the namespace_id when deleting
+           For any creation, a full dns_config is required
            A complex type that contains information about the records that you want Route 53 to create when you register an instance.
            Something like: {
               namespace_id: string
@@ -72,7 +74,7 @@ This field is autopopulated if not provided.
               }
     health_check_config:
         required: false
-        description: Public dns only
+        description:  Required when service discovery namespace is public
         {
           Type: "string" ([HTTP, HTTPS, TCP]),
           ResourcePath: "string",
@@ -81,7 +83,7 @@ This field is autopopulated if not provided.
 
     health_check_custom_config:
         required: False
-        description: Private DNS only
+        description: Required when service discovery namespace is private
         {
           failure_threshold: int
         }
@@ -92,53 +94,129 @@ extends_documentation_fragment:
 
 EXAMPLES = '''
 # Note: These examples do not set authentication details, see the AWS Guide for details.
+
+Private:
+  - service_discovery:
+      name: "sd-example" # becomes sd-example.your-private-sd-namespace.
+      state: "present"
+      dns_config:
+        namespace_id: "looonnnggg-id-with-like-numbers-and-letters-and-dashes"
+        routing_policy: "WEIGHTED"
+        dns_records:
+          - Type: "SRV"
+            TTL: 60
+      health_check_custom_config:
+        failure_threshold: 1
+Public:
+  - service_discovery:
+      name: "sd-example" # becomes sd-example.your-public-sd-namespace.tld
+      state: "present"
+      dns_config:
+        namespace_id: "looonnnggg-id-with-like-numbers-and-letters-and-dashes"
+        routing_policy: "WEIGHTED"
+        dns_records:
+          - Type: "SRV"
+            TTL: 60
+      health_check_config:
+          Type: "HTTP"
+          ResourcePath: "/health-check"
+          FailureThreshold: 2
 '''
 
 RETURN = '''
-Probably something like:
-{
-    'Service': {
-        'Id': 'string',
-        'Arn': 'string',
-        'Name': 'string',
-        'Description': 'string',
-        'InstanceCount': 123,
-        'DnsConfig': {
-            'NamespaceId': 'string',
-            'RoutingPolicy': 'MULTIVALUE'|'WEIGHTED',
-            'DnsRecords': [
-                {
-                    'Type': 'SRV'|'A'|'AAAA'|'CNAME',
-                    'TTL': 123
-                },
-            ]
-        },
-        'HealthCheckConfig': {
-            'Type': 'HTTP'|'HTTPS'|'TCP',
-            'ResourcePath': 'string',
-            'FailureThreshold': 123
-        },
-        'HealthCheckCustomConfig': {
-            'FailureThreshold': 123
-        },
-        'CreateDate': datetime(2015, 1, 1),
-        'CreatorRequestId': 'string'
-    }
-}
+service:
+    description: Details of created service.
+    returned: when creating a service
+    type: complex
+    contains:
+        id:
+            description: Identifier of service discovery service
+            returned: always
+            type: string
+        arn:
+            description: arn of service discovery service
+            returned: always
+            type: string
+        name:
+            description: name of service discovery service
+            returned: always
+            type: string
+        description:
+            description: description of service discovery service
+            returned: always
+            type: string
+        instance_count:
+            description: The number of instances that are currently associated with the service. Instances that were previously associated with the service but that have been deleted are not included in the count.
+            returned: always
+            type: int
 
+        dns_config:
+            description: A complex type that contains information about the records that you want Route 53 to create when you register an instance.
+            returned: always
+            type: complex
+            contains:
+                namespace_id:
+                    description: The ID of the namespace to use for DNS configuration.
+                    type: string
+                    returned: always
+                routing_policy:
+                    description: The routing policy that you want to apply to all records that Route 53 creates when you register an instance and specify this service. (MULTIVALUE|WEIGHTED)
+                    type: string
+                    returned: always
+
+                dns_records: 
+                    description: An array that contains one DnsRecord object for each record that you want Route 53 to create when you register an instance.
+                    type: complex
+                    contains: 
+                        type: SRV|A|AAAA|CNAME,
+                            description: The type of the resource, which indicates the type of value that Route 53 returns in response to DNS queries.
+                            type: string
+                            returned: always
+                        ttl:
+                            description: The type of the resource, which indicates the type of value that Route 53 returns in response to DNS queries.
+                            type: int
+                            returned: always
+        health_check_custom_config:
+            type: complex
+            returned: when service discovery namespace is dns_private type
+            contains:
+                failure_threshold: 
+                    description: The number of consecutive health checks that an endpoint must pass or fail for Route 53 to change the current status of the endpoint from unhealthy to healthy or vice versa.
+                    type: int
+                    returned: always
+        health_check_config:
+            type: complex
+            returned: when service discovery namespace is dns_public type
+            contains:
+                failure_threshold:
+                    description: The number of consecutive health checks that an endpoint must pass or fail for Route 53 to change the current status of the endpoint from unhealthy to healthy or vice versa.
+                    type: int
+                    returned: always
+                resource_path:
+                    description: The path that you want Route 53 to request when performing health checks.
+                    type: string
+                    returned: always
+                type:
+                    type: string
+                    returned: always
+                    description: The type of health check that you want to create, which indicates how Route 53 determines whether an endpoint is healthy.
+
+        create_date: 
+            type: datetime
+            returned: always
+            description: datetime of creation
+        creator_request_id:
+            type: string
+            returned: always
+            description: A unique string that identifies the request and that allows failed requests to be retried without the risk of executing an operation twice.
 '''
 import time
 
-DEPLOYMENT_CONFIGURATION_TYPE_MAP = {
-    'maximum_percent': 'int',
-    'minimum_healthy_percent': 'int'
-}
 
 from ansible.module_utils.aws.core import AnsibleAWSModule
 from ansible.module_utils.ec2 import ec2_argument_spec
 from ansible.module_utils.ec2 import snake_dict_to_camel_dict, camel_dict_to_snake_dict, map_complex_type, get_ec2_security_group_ids_from_names
 from ansible.module_utils.ec2 import ansible_dict_to_boto3_filter_list
-from pprint import pprint
 
 try:
     import botocore
@@ -148,7 +226,7 @@ except ImportError:
 
 
 class ServiceDiscovery:
-    """Handles route 53 Services"""
+    """Handles Service discovery registries"""
 
 
     def __init__(self, module):
@@ -158,21 +236,12 @@ class ServiceDiscovery:
     def get_namespace(self, namespace_id):
         self.sd.get_namespace(Id= id)
 
-    def describe_service(self, cluster_name, service_name):
-        response = self.sd.get_services(
-        )
-        msg = ''
-        if len(response['failures']) > 0:
-            c = self.find_in_array(response['failures'], service_name, 'arn')
-            msg += ", failure reason is " + c['reason']
-            if c and c['reason'] == 'MISSING':
-                return None
-            # fall thru and look through found ones
-        if len(response['services']) > 0:
-            c = self.find_in_array(response['services'], service_name)
-            if c:
-                return c
-        raise Exception("Unknown problem describing service %s." % service_name)
+    def get_service(self, service_id):
+        response = self.sd.get_service(Id=service_id)
+        if response['Service']:
+           return self.jsonize(response['Service'])
+        else:
+           return None
 
     def get_operation(self, operation_id):
         return self.sd.get_operation(operation_id)
@@ -198,7 +267,10 @@ class ServiceDiscovery:
 
         dns_records = dns_config['dns_records']
         dns_config= snake_dict_to_camel_dict(dns_config, capitalize_first=True)
-        dns_config['DnsRecords']=dns_records
+        dns_config['DnsRecords']=[]
+        # use correct casing for aws api
+        for c in dns_records:
+            dns_config['DnsRecords'].append({'Type': c['type'], 'TTL': c['ttl']})
         health_check_config= snake_dict_to_camel_dict(health_check_config, capitalize_first=True)
         health_check_custom_config= snake_dict_to_camel_dict(health_check_custom_config, capitalize_first=True)
 
@@ -212,6 +284,7 @@ class ServiceDiscovery:
             params['CreatorRequestId'] = creator_request_id
         if health_check_config:
             params['HealthCheckConfig']=health_check_config
+
         if health_check_custom_config:
             params['HealthCheckCustomConfig']=health_check_custom_config
         response = self.sd.create_service(**params)
@@ -289,18 +362,21 @@ def main():
 
     module = AnsibleAWSModule(argument_spec=argument_spec,
                               supports_check_mode=False,
-                              mutually_exclusive=[['health_check_config','health_check_custom_config']]
-
+                              mutually_exclusive=[['health_check_config','health_check_custom_config']],
+                              required_if=[('state', 'present', ['name', 'dns_config'])]
                               )
-    # TODO: there's some thought about whn to require an ID.
+# TODO: There's no real use for ID right now, but you should be able to delete a registry by id
 
     sd_mgr = ServiceDiscovery(module)
 
     if module.params['state'] == 'present':
         try:
+            changed=False
             service = sd_mgr.get_services_by_name(module.params['name'], module.params['dns_config']['namespace_id'])
+            # service returned by get_services_by_name includes Id, Name, Arn only
             if (len(service) == 1):
-                module.exit_json( changed=False, **camel_dict_to_snake_dict(service[0]))
+                # if a service was found, use get_service to get the full info
+                service=sd_mgr.get_service(service[0]['Id'])
             if (not service):
                 service = sd_mgr.create_service(
                     module.params['name'],
@@ -309,29 +385,22 @@ def main():
                     module.params['dns_config'],
                     module.params['health_check_config'],
                     module.params['health_check_custom_config'])
-                
-                module.exit_json( changed=True, **camel_dict_to_snake_dict(service))
+                changed=True
+                # service returned by sd_mgr is already unwrapped dict;
+            module.exit_json( changed=changed, Service = camel_dict_to_snake_dict(service))
             #TODO
         except Exception as e:
-            module.fail_json(msg="Exception describing service '" + module.params['name'] +  "': " + str(e))
+            module.fail_json(msg="Exception for servicediscovery '" + module.params['name'] +  "': " + str(e))
     if module.params['state'] == 'absent':
         try:
             service = sd_mgr.get_services_by_name(module.params['name'], module.params['dns_config']['namespace_id'])
             if (len(service) == 1):
                 deletion = sd_mgr.delete_service(service[0]['Id'])
-                module.exit_json( changed=True)
+                module.exit_json(changed=True)
             else:
                 module.fail_json(changed=False, msg="Failed to find service")
-
-
         except Exception as e:
-            module.fail_json(msg="Exception describing service '" + module.params['name'] +  "': " + str(e))
-
-        
-
-
-
-
+            module.fail_json(msg="Exception for servicediscovery '" + module.params['name'] +  "': " + str(e))
 
 if __name__ == '__main__':
     main()
