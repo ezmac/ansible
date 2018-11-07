@@ -24,17 +24,15 @@ DOCUMENTATION = '''
 module: service_discovery
 short_description: thin wrap for boto3 servicediscovery client
 description:
-    https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/servicediscovery.html
-    service discovery comes in two parts, a namespace and a service discovery "registry"
-    Namespace is somewhat owned by route53
-    Registries are owned by the namespace
-    ECS containers may announce themselves to the registry
-    There may be other things that use registries
-    This module tries to allow creating service discovery registries
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/servicediscovery.html
+    - service discovery comes in two parts, a namespace and a service discovery "registry"
+    - Namespace is somewhat owned by route53
+    - Registries are owned by the namespace
+    - ECS containers may announce themselves to the registry
+    - There may be other things that use registries
+    - This module tries to allow creating service discovery registries
 notes:
-    Because lack of domain name in aws, lack of personal need, and general laziness; I have not tested any public parts.
-      - @ezmac
-    
+    - Because lack of domain name in aws, lack of personal need, and general laziness; I have not tested any public parts. - @ezmac
 version_added: "2.8"
 author:
     - "tad merchant @ezmac"
@@ -57,36 +55,40 @@ options:
         required: false
     description:
         description: Description for the service.
-    dns_config: 
+    dns_config:
         required: True
-        description:
-           Required even when deleting to get the namespace_id; At minimum, dns_config should the namespace_id when deleting
-           For any creation, a full dns_config is required
-           A complex type that contains information about the records that you want Route 53 to create when you register an instance.
-           Something like: {
-              namespace_id: string
-              routing_policy: [MULTIVALUE, WEIGHTED]
-              dns_records:[
-                {
-                  Type: [A, AAAA, SRV, CNAME],
-                  TTL: int,
-                  }]
-              }
+        description: A complex type that contains information about the records that you want Route 53 to create when you register an instance.
+        suboptions:
+            namespace_id:
+                description: ID of the service discovery namespace you will associate this service with
+            routing_policy:
+                description: The routing policy that you want to apply to all records that Route 53 creates when you register an instance and specify this service.
+                suboptions:
+                    dns_records:
+                        description: complex type describing what type of dns record will be created when a service registers
+                        suboptions:
+                            type:
+                                description: SRV|A|AAAA|CNAME
+                            ttl:
+                                description: How long the record will live
     health_check_config:
         required: false
         description:  Required when service discovery namespace is public
-        {
-          Type: "string" ([HTTP, HTTPS, TCP]),
-          ResourcePath: "string",
-          FailureThreshold: int
-        }
+        suboptions:
+            failure_threshold:
+                description: The number of consecutive health checks that an endpoint must pass or fail for Route 53 to change the current status of the endpoint from unhealthy to healthy or vice versa.
+            type:
+                description: Health check type ( 'HTTP'|'HTTPS'|'TCP' )
+            resource_path:
+                description: The path that you want Route 53 to request when performing health checks.
 
     health_check_custom_config:
         required: False
         description: Required when service discovery namespace is private
-        {
-          failure_threshold: int
-        }
+        suboptions:
+            failure_threshold:
+                description: The number of consecutive health checks that an endpoint must pass or fail for Route 53 to change the current status of the endpoint from unhealthy to healthy or vice versa.
+
 extends_documentation_fragment:
     - aws
     - ec2
@@ -149,7 +151,6 @@ service:
             description: The number of instances that are currently associated with the service. Instances that were previously associated with the service but that have been deleted are not included in the count.
             returned: always
             type: int
-
         dns_config:
             description: A complex type that contains information about the records that you want Route 53 to create when you register an instance.
             returned: always
@@ -163,12 +164,11 @@ service:
                     description: The routing policy that you want to apply to all records that Route 53 creates when you register an instance and specify this service. (MULTIVALUE|WEIGHTED)
                     type: string
                     returned: always
-
                 dns_records: 
                     description: An array that contains one DnsRecord object for each record that you want Route 53 to create when you register an instance.
                     type: complex
                     contains: 
-                        type: SRV|A|AAAA|CNAME,
+                        type:
                             description: The type of the resource, which indicates the type of value that Route 53 returns in response to DNS queries.
                             type: string
                             returned: always
@@ -180,7 +180,7 @@ service:
             type: complex
             returned: when service discovery namespace is dns_private type
             contains:
-                failure_threshold: 
+                failure_threshold:
                     description: The number of consecutive health checks that an endpoint must pass or fail for Route 53 to change the current status of the endpoint from unhealthy to healthy or vice versa.
                     type: int
                     returned: always
@@ -200,8 +200,7 @@ service:
                     type: string
                     returned: always
                     description: The type of health check that you want to create, which indicates how Route 53 determines whether an endpoint is healthy.
-
-        create_date: 
+        create_date:
             type: datetime
             returned: always
             description: datetime of creation
@@ -352,7 +351,7 @@ def main():
     argument_spec.update(dict(
         state=dict(required=True, choices=['present', 'absent']),
         name=dict(required=True, type='str'),
-        id=dict(required=False, type='str'),
+        #id=dict(required=False, type='str'),
         creator_request_id=dict(required=False, type='str'),
         description=dict(required=False, type='str'),
         dns_config=dict(required=False, type='dict'),

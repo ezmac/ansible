@@ -22,11 +22,11 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 DOCUMENTATION = '''
 ---
 module: service_discovery_namespace
-short_description: thin wrap for boto servicediscovery library
+short_description: thin wrap for boto servicediscovery client
 description:
-    https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/servicediscovery.html
+    - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/servicediscovery.html
 notes:
-    
+     - nah.
 version_added: "2.8"
 author:
     - "tad merchant @ezmac"
@@ -44,8 +44,7 @@ options:
         required: true
     creator_request_id:
         description:
-          - A unique string that identifies the request and that allows failed CreateService requests to be retried without the risk of executing the operation twice. CreatorRequestId can be any unique string, for example, a date/time stamp.
-This field is autopopulated if not provided.
+          - A unique string that identifies the request and that allows failed CreateService requests to be retried without the risk of executing the operation twice. CreatorRequestId can be any unique string, for example, a date/time stamp. This field is autopopulated if not provided.
         required: false
     description:
         description: Description for the namespace
@@ -60,11 +59,11 @@ EXAMPLES = '''
 '''
 
 RETURN = '''
-  namespace:
+namespace:
     description: Details of created namespace.
     returned: when creating a namespace with wait=true (default)
     type: complex
-    contains: 
+    contains:
         id:
             description: Identifier of service discovery namespace
             returned: always
@@ -81,7 +80,7 @@ RETURN = '''
             description: The type of the namespace. Valid values are DNS_PUBLIC and DNS_PRIVATE .
             type: string
             returned: always
-        description: string,
+        description:
             description: Description of namespace
             type: string
             returned: always
@@ -113,9 +112,10 @@ RETURN = '''
             description: A unique string that identifies the request and that allows failed requests to be retried without the risk of executing an operation twice.
 
 
-  operation_id:
-      type: string
-      retuned: when creating and wait=false
+operation_id:
+    description: operation id of the non-waited namespace create request
+    type: string
+    returned: when creating and wait=false
 
 '''
 import time
