@@ -21,7 +21,7 @@ ANSIBLE_METADATA = {'metadata_version': '1.1',
 
 DOCUMENTATION = '''
 ---
-module: service_discovery
+module: service_discovery_registry
 short_description: thin wrap for boto servicediscovery client
 description:
     - https://boto3.amazonaws.com/v1/documentation/api/latest/reference/services/servicediscovery.html
@@ -32,7 +32,7 @@ description:
     - There may be other things that use registries
     - This module tries to allow creating service discovery registries
 notes:
-    - Because lack of domain name in aws, lack of personal need, and general laziness; I have not tested any public parts. - @ezmac
+    - currently, public namespaces have not been tested.
 version_added: "2.8"
 author:
     - "tad merchant @ezmac"
@@ -108,7 +108,7 @@ EXAMPLES = '''
 # Note: These examples do not set authentication details, see the AWS Guide for details.
 
 Private:
-  - service_discovery:
+  - service_discovery_registry:
       name: "sd-example" # becomes sd-example.your-private-sd-namespace.
       state: "present"
       dns_config:
@@ -120,7 +120,7 @@ Private:
       health_check_custom_config:
         failure_threshold: 1
 Public:
-  - service_discovery:
+  - service_discovery_registry:
       name: "sd-example" # becomes sd-example.your-public-sd-namespace.tld
       state: "present"
       dns_config:
@@ -249,7 +249,7 @@ except ImportError:
     pass
 
 
-class ServiceDiscovery:
+class ServiceDiscoveryRegistry:
     """Handles Service discovery registries"""
 
     def __init__(self, module):
@@ -356,7 +356,7 @@ def main():
                               )
 # TODO: There's no real use for ID right now, but you should be able to delete a registry by id
 
-    sd_mgr = ServiceDiscovery(module)
+    sd_mgr = ServiceDiscoveryRegistry(module)
 
     if module.params['state'] == 'present':
         try:

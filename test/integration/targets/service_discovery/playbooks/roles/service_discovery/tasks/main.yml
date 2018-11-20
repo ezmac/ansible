@@ -36,7 +36,7 @@
         that:
           - service_discovery_private_namespace.changed
     - name: create service discovery registry
-      service_discovery:
+      service_discovery_registry:
         name: "private-{{ namespace_name}}"
         state: present
         dns_config:
@@ -62,7 +62,7 @@
 
     # ignore errors so that test repeats are more reliable
     - name: remove private service_discovery registry
-      service_discovery:
+      service_discovery_registry:
         name: "private-{{ namespace_name }}"
         state: absent
         dns_config:
