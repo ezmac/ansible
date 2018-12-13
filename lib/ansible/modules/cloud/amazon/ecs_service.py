@@ -454,7 +454,6 @@ class EcsServiceManager:
             cluster=cluster_name,
             service=service_name,
             taskDefinition=task_definition,
-            desiredCount=desired_count,
             deploymentConfiguration=deployment_configuration)
         if network_configuration:
             params['networkConfiguration'] = network_configuration
