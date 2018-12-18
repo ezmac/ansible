@@ -344,6 +344,7 @@ try:
 except ImportError:
     pass  # handled by AnsibleAWSModule
 
+
 class EcsServiceManager:
     """Handles ECS Services"""
 
@@ -419,6 +420,7 @@ class EcsServiceManager:
                        desired_count, client_token, role, deployment_configuration,
                        placement_constraints, placement_strategy, health_check_grace_period_seconds,
                        network_configuration, service_registries, launch_type, scheduling_strategy):
+
         params = dict(
             cluster=cluster_name,
             serviceName=service_name,
@@ -599,13 +601,11 @@ def main():
                     if 'containerPort' in loadBalancer:
                         loadBalancer['containerPort'] = int(loadBalancer['containerPort'])
 
-
                 if update:
                     # If boto is not up to snuff, getting params will fail;
                     # Move checks to where they matter vs generall at module level
-                    #So, boto3 of various versions supports various features.  Parameters that are not supported
+                    # So, boto3 of various versions supports various features.  Parameters that are not supported
 
-                    
                     if module.params['scheduling_strategy']:
                         if not module.botocore_at_least('1.10.37'):
                             module.fail_json(msg='botocore needs to be version 1.10.37 or higher to use scheduling_strategy')
@@ -619,7 +619,7 @@ def main():
                             module.fail_json(msg="It is not possible to update the service registries of an existing service")
 
                     if (existing['loadBalancers'] or []) != loadBalancers:
-                        module.fail_json(msg="It is not possible to update the load balancers of an existing service", existing=existing, loadBalancers=loadBalancers)
+                        module.fail_json(msg="It is not possible to update the load balancers of an existing service")
 
                     # update required
                     response = service_mgr.update_service(module.params['name'],
@@ -645,8 +645,11 @@ def main():
                                                               module.params['placement_strategy'],
                                                               module.params['health_check_grace_period_seconds'],
                                                               network_configuration,
+<<<<<<< 2a849361358484bf2054d90641db8833a5fdad70
                                                               serviceRegistries,
                                                               module.params['launch_type'],
+=======
+>>>>>>> Pass testS
                                                               serviceRegistries,
                                                               module.params['launch_type'],
                                                               module.params['scheduling_strategy']
