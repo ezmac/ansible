@@ -248,6 +248,10 @@
       assert:
         that:
           - ecs_service.changed
+    - name: check that ECS returns tags
+      assert:
+        that:
+          - ecs_service.service.tags | length > 0
 
     - name: create same ECS service definition (should not change)
       ecs_service:
