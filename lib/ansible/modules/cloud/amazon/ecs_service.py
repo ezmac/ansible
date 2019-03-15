@@ -153,6 +153,11 @@ options:
         required: false
         version_added: 2.8
         choices: ["DAEMON", "REPLICA"]
+    tags:
+        description:
+          - Tags that will be added to ecs tasks on start and run
+        required: false
+        version_added: 2.8
 extends_documentation_fragment:
     - aws
     - ec2
@@ -336,8 +341,9 @@ DEPLOYMENT_CONFIGURATION_TYPE_MAP = {
 }
 
 from ansible.module_utils.aws.core import AnsibleAWSModule
+from ansible.module_utils.basic import missing_required_lib
 from ansible.module_utils.ec2 import ec2_argument_spec
-from ansible.module_utils.ec2 import snake_dict_to_camel_dict, map_complex_type, get_ec2_security_group_ids_from_names
+from ansible.module_utils.ec2 import snake_dict_to_camel_dict, map_complex_type, get_ec2_security_group_ids_from_names, ansible_dict_to_boto3_tag_list
 
 try:
     import botocore
@@ -419,7 +425,8 @@ class EcsServiceManager:
     def create_service(self, service_name, cluster_name, task_definition, load_balancers,
                        desired_count, client_token, role, deployment_configuration,
                        placement_constraints, placement_strategy, health_check_grace_period_seconds,
-                       network_configuration, service_registries, launch_type, scheduling_strategy):
+                       network_configuration, service_registries, launch_type, scheduling_strategy,
+                       tags):
 
         params = dict(
             cluster=cluster_name,
@@ -446,12 +453,15 @@ class EcsServiceManager:
 
         if scheduling_strategy:
             params['schedulingStrategy'] = scheduling_strategy
+        if tags:
+            params['tags'] = ansible_dict_to_boto3_tag_list(tags, 'key', 'value')
+
         response = self.ecs.create_service(**params)
         return self.jsonize(response['service'])
 
     def update_service(self, service_name, cluster_name, task_definition,
                        desired_count, deployment_configuration, network_configuration,
-                       health_check_grace_period_seconds, force_new_deployment):
+                       health_check_grace_period_seconds, force_new_deployment, tags):
         params = dict(
             cluster=cluster_name,
             service=service_name,
@@ -466,6 +476,8 @@ class EcsServiceManager:
         # desired count is not required if scheduling strategy is daemon
         if desired_count is not None:
             params['desiredCount'] = desired_count
+        if tags:
+            params['tags'] = ansible_dict_to_boto3_tag_list(tags, 'key', 'value')
 
         response = self.ecs.update_service(**params)
         return self.jsonize(response['service'])
@@ -500,6 +512,16 @@ class EcsServiceManager:
         load_balancers = params.get('loadBalancers', [])
         # check if botocore (and thus boto3) is new enough for using the healthCheckGracePeriodSeconds parameter
         return len(load_balancers) > 0 and self.module.botocore_at_least('1.8.20')
+    def ecs_service_long_format_enabled(self):
+        account_support = self.ecs.list_account_settings(name='serviceLongArnFormat', effectiveSettings=True)
+        return account_support['settings'][0]['value'] == 'enabled'
+
+    def ecs_api_handles_tags(self):
+        from distutils.version import LooseVersion
+        # There doesn't seem to be a nice way to inspect botocore to look
+        # for attributes (and networkConfiguration is not an explicit argument
+        # to e.g. ecs.run_task, it's just passed as a keyword argument)
+        return LooseVersion(botocore.__version__) >= LooseVersion('1.12.46')
 
 
 def main():
@@ -527,7 +549,8 @@ def main():
         )),
         launch_type=dict(required=False, choices=['EC2', 'FARGATE']),
         service_registries=dict(required=False, type='list', default=[]),
-        scheduling_strategy=dict(required=False, choices=['DAEMON', 'REPLICA'])
+        scheduling_strategy=dict(required=False, choices=['DAEMON', 'REPLICA']),
+        tags=dict(required=False, type='dict')
     ))
 
     module = AnsibleAWSModule(argument_spec=argument_spec,
@@ -570,6 +593,12 @@ def main():
     if module.params['health_check_grace_period_seconds']:
         if not module.botocore_at_least('1.8.20'):
             module.fail_json(msg='botocore needs to be version 1.8.20 or higher to use health_check_grace_period_seconds')
+    if module.params['tags']:
+        if not service_mgr.ecs_api_handles_tags():
+            module.fail_json(msg=missing_required_lib("botocore >= 1.12.46", reason="to use tags"))
+        if not service_mgr.ecs_service_long_format_enabled():
+            module.fail_json(msg="Cannot set service tags: long format service arns are required to set tags")
+
 
     if module.params['state'] == 'present':
 
@@ -627,7 +656,9 @@ def main():
                                                           deploymentConfiguration,
                                                           network_configuration,
                                                           module.params['health_check_grace_period_seconds'],
-                                                          module.params['force_new_deployment'])
+                                                          module.params['force_new_deployment'],
+                                                          module.params['tags']
+                                                          )
 
                 else:
                     try:
@@ -645,7 +676,8 @@ def main():
                                                               network_configuration,
                                                               serviceRegistries,
                                                               module.params['launch_type'],
-                                                              module.params['scheduling_strategy']
+                                                              module.params['scheduling_strategy'],
+                                                              module.params['tags']
                                                               )
                     except botocore.exceptions.ClientError as e:
                         module.fail_json_aws(e, msg="Couldn't create service")
